@@ -6,12 +6,22 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdundek/kafka-controller.git"
+  },
+  "keywords": [
+    "kafka"
+  ],
   "author": "Michael Dundek",
   "license": "ISC",
   "dependencies": {
     "kafka-node": "^5.0.0",
     "kafkajs": "^1.14.0",
     "pg": "^8.4.2"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/mdundek/kafka-controller/issues"
+  },
+  "homepage": "https://github.com/mdundek/kafka-controller#readme"
 }
