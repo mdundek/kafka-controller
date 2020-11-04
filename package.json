@@ -1,0 +1,17 @@
+{
+  "name": "kafka-controller",
+  "version": "1.0.0",
+  "description": "A Kafka wrapper arount the kafka-node module, dummy proof adding reconnect management and consumer strict order processing",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Michael Dundek",
+  "license": "ISC",
+  "dependencies": {
+    "kafka-node": "^5.0.0",
+    "kafkajs": "^1.14.0",
+    "pg": "^8.4.2"
+  }
+}
