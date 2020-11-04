@@ -8,9 +8,10 @@ class ConsumeExactlyOnce extends Base {
      * @param {*} consumerId 
      * @param {*} topicArray 
      */
-    constructor(topicArray) {
-        super();
+    constructor(client, topicArray, groupId) {
+        super(client);
         this.topicArray = topicArray;
+        this.groupId = groupId;
     }
 
     /**
@@ -21,14 +22,14 @@ class ConsumeExactlyOnce extends Base {
     start(handleMessage) {
         (async() => {
             for(let i=0; i<this.topicArray.length; i++){
-                let result = await DBController.getTopicOffset(this.topicArray[i].topic, this.topicArray[i].partition);
+                let result = await DBController.getTopicOffset(this.groupId, this.topicArray[i].topic, this.topicArray[i].partition);
                 if(!result) {
-                    await DBController.createTopicOffset(this.topicArray[i].topic, this.topicArray[i].partition, 0);
+                    await DBController.createTopicOffset(this.groupId, this.topicArray[i].topic, this.topicArray[i].partition, 0);
                 } else {
                     this.topicArray[i].offset = result.offset;
                 }
             }
-            this.initConsumer(this.topicArray);
+            this.initConsumer(this.topicArray, this.groupId);
             this.handleMessage = handleMessage;
             this.consumer.on('error', () => {
                 this.consumer.close(false, () => {
@@ -54,7 +55,7 @@ class ConsumeExactlyOnce extends Base {
             this.processing = true;
             let nextMessage = this.messageQueue.shift();
             this.handleMessage(nextMessage).then(async function (_message) {
-                await DBController.updateTopicOffset(_message.topic, _message.partition, _message.offset + 1);
+                await DBController.updateTopicOffset(this.groupId, _message.topic, _message.partition, _message.offset + 1);
                 this.processing = false;
                 this.processQueue();
             }.bind(this, nextMessage)).catch(error => {

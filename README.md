@@ -27,7 +27,7 @@ The following environement variables need to be set:
 ### Andmin stuff
 
 ```javascript
-const KafkaController = require("../kafka-controller");
+const KafkaController = require("kafka-controller");
 const kafka = new KafkaController();
 
 kafka.initAdmin(async () => {
@@ -47,13 +47,13 @@ kafka.initAdmin(async () => {
 ### Consumer & producers
 
 ```javascript
-const KafkaController = require("../kafka-controller");
+const KafkaController = require("kafka-controller");
 const kafka = new KafkaController();
 
-kafka.registerConsumer("apaas-bot-registry", 0, async (message) => {
+kafka.registerConsumer("my-consumer-group", "apaas-bot-registry", 0, async (message) => {
     console.log(message);
 });
 
 kafka.initProducer();
-kafka.produceMessage("apaas-bot-registry", 0, {"foo": "bar", "bar": 1})
+kafka.produceMessage("apaas-bot-registry", 0, "fookey", {"foo": "bar", "bar": 1})
 ```

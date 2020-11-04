@@ -21,10 +21,10 @@ class DBController {
     /**
      * getAllClusterMasters
      */
-    static async getTopicOffset(topic, partition) {
+    static async getTopicOffset(groupId, topic, partition) {
         let client = await this.pool.connect();
         try {
-            const res = await client.query(`SELECT topic_offset."offset" FROM topic_offset WHERE "topic" = $1 AND "partition" = $2`, [topic, partition]);
+            const res = await client.query(`SELECT topic_offset."offset" FROM topic_offset WHERE "topic" = $1 AND "partition" = $2 AND "groupId" = $3`, [topic, partition, groupId]);
             return res.rows.length == 1 ? res.rows[0] : null;
         } finally {
             client.release();
@@ -37,11 +37,11 @@ class DBController {
      * @param {*} partition 
      * @param {*} offset 
      */
-    static async createTopicOffset(topic, partition, offset) {
+    static async createTopicOffset(groupId, topic, partition, offset) {
         let client = await this.pool.connect();
         try {
-            let query = `INSERT INTO topic_offset ("topic", "partition", "offset") VALUES ($1, $2, $3)`;
-            let values = [topic, partition, offset];
+            let query = `INSERT INTO topic_offset ("groupId", "topic", "partition", "offset") VALUES ($1, $2, $3, $4)`;
+            let values = [groupId, topic, partition, offset];
             return await client.query(query, values);
         } finally {
             client.release()
@@ -54,11 +54,11 @@ class DBController {
      * @param {*} partition 
      * @param {*} offset 
      */
-    static async updateTopicOffset(topic, partition, offset) {
+    static async updateTopicOffset(groupId, topic, partition, offset) {
         let client = await this.pool.connect();
         try {
-            let query = `UPDATE topic_offset SET "offset" = $1 WHERE "topic" = $2 AND "partition" = $3`;
-            let values = [offset, topic, partition];
+            let query = `UPDATE topic_offset SET "offset" = $1 WHERE "topic" = $2 AND "partition" = $3 AND "groupId" = $4`;
+            let values = [offset, topic, partition, groupId];
             return await client.query(query, values);
         } finally {
             client.release()

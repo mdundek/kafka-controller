@@ -5,8 +5,8 @@ class Producer extends Base {
     /**
      * constructor
      */
-    constructor() {
-        super();
+    constructor(client) {
+        super(client);
     }
 
     /**
