@@ -50,9 +50,10 @@ kafka.initAdmin(async () => {
 const KafkaController = require("kafka-controller");
 const kafka = new KafkaController();
 
-kafka.registerConsumer("my-consumer-group", "apaas-bot-registry", 0, async (message) => {
+let processMessage = async (message) => {
     console.log(message);
-});
+}
+kafka.registerConsumer("my-consumer-group", "apaas-bot-registry", 0, processMessage);
 
 kafka.initProducer();
 kafka.produceMessage("apaas-bot-registry", 0, "fookey", {"foo": "bar", "bar": 1})
