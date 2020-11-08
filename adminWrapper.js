@@ -1,6 +1,6 @@
 const { Kafka } = require('kafkajs')
 
-class Admin {
+class AdminWrapper {
     
     /**
      * constructor
@@ -69,4 +69,4 @@ class Admin {
         })
     }
 }
-module.exports = Admin;
+module.exports = AdminWrapper;

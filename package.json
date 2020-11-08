@@ -18,7 +18,8 @@
   "dependencies": {
     "kafka-node": "^5.0.0",
     "kafkajs": "^1.14.0",
-    "pg": "^8.4.2"
+    "pg": "^8.4.2",
+    "shortid": "^2.2.16"
   },
   "bugs": {
     "url": "https://github.com/mdundek/kafka-controller/issues"

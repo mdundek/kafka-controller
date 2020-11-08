@@ -1,7 +1,7 @@
-const Base = require("./base");
+var kafka = require('kafka-node');
 const DBController = require("./db");
 
-class ConsumeExactlyOnce extends Base {
+class ConsumeWrapper {
     
     /**
      * constructor
@@ -9,9 +9,11 @@ class ConsumeExactlyOnce extends Base {
      * @param {*} topicArray 
      */
     constructor(client, topicArray, groupId) {
-        super(client);
         this.topicArray = topicArray;
         this.groupId = groupId;
+        this.client = client;
+        this.messageQueue = [];
+        this.processing = false;
     }
 
     /**
@@ -19,8 +21,8 @@ class ConsumeExactlyOnce extends Base {
      * @param {*} handleMessage 
      * @param {*} handleError 
      */
-    start(handleMessage) {
-        (async() => {
+    async start(handleMessage, onDbError, onConsumerClosed) {
+        try {
             for(let i=0; i<this.topicArray.length; i++){
                 let result = await DBController.getTopicOffset(this.groupId, this.topicArray[i].topic, this.topicArray[i].partition);
                 if(!result) {
@@ -29,22 +31,31 @@ class ConsumeExactlyOnce extends Base {
                     this.topicArray[i].offset = result.offset;
                 }
             }
-            this.initConsumer(this.topicArray, this.groupId);
-            this.handleMessage = handleMessage;
-            this.consumer.on('error', () => {
-                this.consumer.close(false, () => {
-                    this.start(this.handleMessage);
-                });
+        } catch (err) {
+            return onDbError(err);
+        }
+       console.log("topic array", this.topicArray);
+       console.log("this.groupId", this.groupId);
+        this.consumer = new kafka.Consumer(this.client, this.topicArray, {
+            autoCommit: false,
+            fromOffset: true,
+            groupId: this.groupId
+        });
+        
+        this.handleMessage = handleMessage;
+        this.consumer.on('error', (err) => {
+            this.consumer.close(false, (err) => {
+                onConsumerClosed(err);
             });
-            this.consumer.on('message', (message) => {
-                try {
-                    let _jm = JSON.parse(message.value);
-                    message.value = _jm;
-                } catch (error) {}
-                this.messageQueue.push(message);
-                this.processQueue();
-            });
-        })();
+        });
+        this.consumer.on('message', (message) => {
+            try {
+                let _jm = JSON.parse(message.value);
+                message.value = _jm;
+            } catch (error) {}
+            this.messageQueue.push(message);
+            this.processQueue();
+        });
     }
 
     /**
@@ -66,4 +77,4 @@ class ConsumeExactlyOnce extends Base {
         }
     }
 }
-module.exports = ConsumeExactlyOnce;
+module.exports = ConsumeWrapper;
