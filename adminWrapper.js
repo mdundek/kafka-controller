@@ -6,10 +6,18 @@ class AdminWrapper {
      * constructor
      */
     constructor(success, error) {
-        this.kafka = new Kafka({
-            clientId: 'admin-app',
-            brokers: [`${process.env.KAFKA_HOST}:${process.env.KAFKA_PORT}`]
-        });
+        if(process.env.KAFKA_CONNECTION_MODE && process.env.KAFKA_CONNECTION_MODE == "internal") {
+            this.kafka = new Kafka({
+                clientId: 'admin-app',
+                brokers: [`${process.env.KAFKA_HOST}:${process.env.KAFKA_INTERNAL_PORT}`]
+            });
+        } else {
+            this.kafka = new Kafka({
+                clientId: 'admin-app',
+                brokers: [`${process.env.KAFKA_HOST}:${process.env.KAFKA_PORT}`]
+            });
+        }
+
         this.admin = this.kafka.admin();
         this.admin.connect().then(() => {
             success().then(() => {});

@@ -18,7 +18,7 @@ class DBController {
                 console.error('Unexpected error on idle client', err);
             });
         } catch (error) {
-                console.log("PG ERROR");
+                console.log("PG ERROR", error);
         }
     }
 
@@ -33,7 +33,7 @@ class DBController {
             return res.rows.length == 1 ? res.rows[0] : null;
         } 
         catch (error) {
-            console.log("PG ERROR");
+            console.log("PG ERROR", error);
             client = null;
             throw error;
         } finally {
@@ -56,7 +56,7 @@ class DBController {
             let values = [groupId, topic, partition, offset];
             return await client.query(query, values);
         } catch (error) {
-            console.log("PG ERROR");
+            console.log("PG ERROR", error);
             client = null;
             throw error;
         } finally {
@@ -79,7 +79,7 @@ class DBController {
             let values = [offset, topic, partition, groupId];
             return await client.query(query, values);
         } catch (error) {
-            console.log("PG ERROR");
+            console.log("PG ERROR", error);
             client = null;
             throw error;
         } finally {

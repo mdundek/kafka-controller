@@ -250,11 +250,15 @@ class KafkaController {
      * _createClient
      */
     _createClient() {
-        let client = new kafka.KafkaClient({ 
-            kafkaHost: `${process.env.KAFKA_HOST}:${process.env.KAFKA_PORT}`
-        });
-       
-        return client;
+        if(process.env.KAFKA_CONNECTION_MODE && process.env.KAFKA_CONNECTION_MODE == "internal") {
+            return new kafka.KafkaClient({ 
+                kafkaHost: `${process.env.KAFKA_HOST}:${process.env.KAFKA_INTERNAL_PORT}`
+            });
+        } else {
+            return new kafka.KafkaClient({ 
+                kafkaHost: `${process.env.KAFKA_HOST}:${process.env.KAFKA_PORT}`
+            });
+        }
     }
 
     /**
