@@ -34,8 +34,7 @@ class ConsumeWrapper {
         } catch (err) {
             return onDbError(err);
         }
-       console.log("topic array", this.topicArray);
-       console.log("this.groupId", this.groupId);
+
         this.consumer = new kafka.Consumer(this.client, this.topicArray, {
             autoCommit: false,
             fromOffset: true,

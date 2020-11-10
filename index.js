@@ -7,6 +7,8 @@ const KafkaConsumeWrapper = require("./consumeWrapper");
 const KafkaProducerWrapper = require("./producerWrapper");
 const KafkaAdminWrapper = require("./adminWrapper");
 const DBController = require("./db");
+const RequestResponseHelper = require("./requestResponse");
+
 DBController.init();
 
 let _envDependencies = ["KAFKA_HOST", "KAFKA_PORT", "DB_HOST", "DB_PORT", "DB_KAFKA_NAME", "DB_USER", "DB_PASS"];
@@ -40,8 +42,6 @@ class KafkaController {
         process.on('SIGUSR2', this._onExit.bind(this, {exit:true}));
         process.on('uncaughtException', this._onExit.bind(this, {exit:true}));
     }
-
-   
 
     /**
      * initAdmin
@@ -124,9 +124,10 @@ class KafkaController {
                 };
                 this.producer.send([payload], function (_payload, err, data) {
                     if(err) {
-                        this.bufferProducerMessages.push(_payload);
+                        reject(err);
+                    } else {
+                        resolve(data[topic][key]);
                     }
-                    resolve(data[topic][key]);
                 }.bind(this, payload));
             } else if(!strict) {
                 this.bufferProducerMessages.push({
@@ -244,6 +245,13 @@ class KafkaController {
                 performSearch();
             }
         });
+    }
+
+    /**
+     * getReqResController
+     */
+    getReqResController() {
+        return RequestResponseHelper;
     }
 
      /**
