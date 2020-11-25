@@ -67,8 +67,9 @@ class RequestResponseHelper {
                     data: responseData
                 }, true);
             } catch (error) {
-                this.pendingResponses[requestId].reject(new Error("Could not publish the request to Kafka"));
-                delete this.pendingResponses[requestId];
+                console.log(this.pendingResponses);
+                this.pendingResponses[messageValue.key].reject(new Error("Could not publish the request to Kafka"));
+                delete this.pendingResponses[messageValue.key];
             }
         }
     }
@@ -126,6 +127,7 @@ class RequestResponseHelper {
      */
     static async _onConsumerMessage(message) {
         try {
+            // console.log(message);
             if(message.topic == 'apaas-request-response') {
                 await this._checkExpected(message.value);
                 await this._checkIfTargetTask(message.value);

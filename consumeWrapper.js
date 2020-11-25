@@ -1,12 +1,13 @@
-var kafka = require('kafka-node');
+const kafka = require('kafka-node');
 const DBController = require("./db");
 
 class ConsumeWrapper {
     
     /**
      * constructor
-     * @param {*} consumerId 
+     * @param {*} client 
      * @param {*} topicArray 
+     * @param {*} groupId 
      */
     constructor(client, topicArray, groupId) {
         this.topicArray = topicArray;
@@ -19,9 +20,10 @@ class ConsumeWrapper {
     /**
      * start
      * @param {*} handleMessage 
-     * @param {*} handleError 
+     * @param {*} onDbError 
+     * @param {*} onConsumerClosed 
      */
-    async start(handleMessage, onDbError, onConsumerClosed) {
+    async start(handleMessage, onDbError, onConsumerClosed, remainingBuffer) {
         try {
             for(let i=0; i<this.topicArray.length; i++){
                 let result = await DBController.getTopicOffset(this.groupId, this.topicArray[i].topic, this.topicArray[i].partition);
@@ -34,7 +36,7 @@ class ConsumeWrapper {
         } catch (err) {
             return onDbError(err);
         }
-
+        this.messageQueue = remainingBuffer ? remainingBuffer : [];
         this.consumer = new kafka.Consumer(this.client, this.topicArray, {
             autoCommit: false,
             fromOffset: true,
@@ -42,19 +44,36 @@ class ConsumeWrapper {
         });
         
         this.handleMessage = handleMessage;
-        this.consumer.on('error', (err) => {
+        this.onConsumerClosed = onConsumerClosed;
+        this.consumer.on('error', this._onError.bind(this));
+        this.consumer.on('message', this._onMessage.bind(this));
+    }
+
+    _onMessage(message) {
+        try {
+            let _jm = JSON.parse(message.value);
+            message.value = _jm;
+        } catch (error) {}
+        this.messageQueue.push(message);
+        this.processQueue();
+    }
+
+    _onError(err) {
+        if(this.consumer) {
             this.consumer.close(false, (err) => {
-                onConsumerClosed(err);
+                this.cleanup();
+                this.onConsumerClosed(err, JSON.parse(JSON.stringify(this.messageQueue)));
             });
-        });
-        this.consumer.on('message', (message) => {
-            try {
-                let _jm = JSON.parse(message.value);
-                message.value = _jm;
-            } catch (error) {}
-            this.messageQueue.push(message);
-            this.processQueue();
-        });
+        } else {
+            this.onError(err);
+        }
+    }
+
+    cleanup() {
+        try {
+            this.consumer.removeListener('message', this._onMessage);
+            this.consumer.removeListener('error', this._onError);
+        } catch (error) {}
     }
 
     /**
@@ -69,9 +88,11 @@ class ConsumeWrapper {
                 this.processing = false;
                 this.processQueue();
             }.bind(this, nextMessage)).catch(error => {
+                if(process.env.LOG_MSG_PROCESSING_ERRORS)
+                    console.log(error);
                 this.messageQueue.unshift(nextMessage);
                 this.processing = false;
-                this.processQueue();
+                this._onError(error);
             });
         }
     }

@@ -17,8 +17,34 @@ class DBController {
             this.pool.on('error', (err, client) => {
                 console.error('Unexpected error on idle client', err);
             });
+            (async() => {
+                let client = await this.pool.connect();
+                try {
+                    const res = await client.query(`SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE  table_schema = 'public'
+                        AND    table_name   = 'topic_offset'
+                        );`, []);
+                    if(!res.rows[0].exists) {
+                        await client.query(`CREATE SEQUENCE topic_offset_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 START 17 CACHE 1`, []);
+                        await client.query(`CREATE TABLE "public"."topic_offset" (
+                            "id" integer DEFAULT nextval('topic_offset_id_seq') NOT NULL,
+                            "topic" character varying(255) NOT NULL,
+                            "partition" character varying(255) NOT NULL,
+                            "offset" integer NOT NULL,
+                            "groupId" character varying(255) NOT NULL
+                        ) WITH (oids = false)`, []);
+                    }
+               
+                } catch (_e) {
+                    console.log("PG INIT DB ERROR", _e.message);
+                }
+                finally {
+                    client.release();
+                }
+            })();
         } catch (error) {
-                console.log("PG ERROR", error);
+            console.log("PG connect ERROR", error.message);
         }
     }
 
@@ -33,7 +59,7 @@ class DBController {
             return res.rows.length == 1 ? res.rows[0] : null;
         } 
         catch (error) {
-            console.log("PG ERROR", error);
+            console.log("PG ERROR getTopicOffset", error.message);
             client = null;
             throw error;
         } finally {
@@ -56,7 +82,7 @@ class DBController {
             let values = [groupId, topic, partition, offset];
             return await client.query(query, values);
         } catch (error) {
-            console.log("PG ERROR", error);
+            console.log("PG ERROR createTopicOffset", error.message);
             client = null;
             throw error;
         } finally {
@@ -79,7 +105,7 @@ class DBController {
             let values = [offset, topic, partition, groupId];
             return await client.query(query, values);
         } catch (error) {
-            console.log("PG ERROR", error);
+            console.log("PG ERROR updateTopicOffset", error.message);
             client = null;
             throw error;
         } finally {

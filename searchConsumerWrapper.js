@@ -10,28 +10,50 @@ class SearchConsumer {
         this.onMessageCallback = null;
         this.onConsumerErrorCallback = null;
         this.onOffsetOutOfRangeCallback = null;
-        this.consumer = new kafka.Consumer(client, [], {
-            autoCommit: false,
-            fromOffset: true
-        });
+        try {
+            this.consumer = new kafka.Consumer(client, [], {
+                autoCommit: false,
+                fromOffset: true
+            });
+        
+            this.consumer.on('message', this._onMessage.bind(this));
+            this.consumer.on('error', this._onError.bind(this));
+            this.consumer.on('offsetOutOfRange', this._onOffsetOutOfRange.bind(this));
+        } catch (error) {
+            this.cleanup();
+            this.onError(error);
+        }
+    }
 
-        this.consumer.on('message', (event) => {
-            if(this.onMessageCallback) {
-                this.onMessageCallback(event);
-            }
-        });
+    _onMessage(event) {
+        if(this.onMessageCallback) {
+            this.onMessageCallback(event);
+        }
+    }
 
-        this.consumer.on('error', (err) => {
+    _onError(err) {
+        if(this.consumer) {
             this.consumer.close(false, (err) => {
+                this.cleanup();
                 this.onError(err);
             });
-        });
+        } else {
+            this.onError(err);
+        }
+    }
 
-        this.consumer.on('offsetOutOfRange', (err) => {
-            if(this.onOffsetOutOfRangeCallback) {
-                this.onOffsetOutOfRangeCallback(err);
-            }
-        });
+    _onOffsetOutOfRange(err) {
+        if(this.onOffsetOutOfRangeCallback) {
+            this.onOffsetOutOfRangeCallback(err);
+        }
+    }
+
+    cleanup() {
+        try {
+            this.consumer.removeListener('message', this._onMessage);
+            this.consumer.removeListener('error', this._onError);
+            this.consumer.removeListener('offsetOutOfRange', this._onOffsetOutOfRange);
+        } catch (error) {}
     }
 }
 

@@ -16,6 +16,7 @@
   "author": "Michael Dundek",
   "license": "ISC",
   "dependencies": {
+    "jsonata": "^1.8.4",
     "kafka-node": "^5.0.0",
     "kafkajs": "^1.14.0",
     "pg": "^8.4.2",
