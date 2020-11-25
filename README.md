@@ -9,6 +9,22 @@ The module will also buffer producer messages in case the broker is down, and su
 npm i kafka-controller
 ```
 
+In case of some lib errors, you need to change the file `./node_modules/kafka-node/lib/kafkaClient.js`, look for function `KafkaClient.prototype.loadMetadataForTopics` and change it like the following:
+
+```
+try {
+    const broker = this.brokerForLeader();
+    const correlationId = this.nextId();
+    const supportedCoders = getSupportedForRequestType(broker, 'metadata');
+    const request = supportedCoders.encoder(this.clientId, correlationId, topics);
+
+    this.queueCallback(broker.socket, correlationId, [supportedCoders.decoder, cb]);
+    broker.write(request);
+} catch (err) {
+  callback(err);
+}  
+```
+
 ## Usage
 
 Running long task processing for kafka events can be tricky, Kafka has a session timeout which will result in events being re-consumed.  
