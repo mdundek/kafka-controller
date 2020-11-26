@@ -26,6 +26,7 @@ class KafkaController {
             }
         }
         
+        this.clientUidStates = {};
         this.consumers = [];
         this.bufferProducerMessages = [];
         this.producerBufferBussy = false;
@@ -144,30 +145,38 @@ class KafkaController {
     /**
      * _consumerClientOnClose
      */
-    _consumerClientOnClose(regData, error, messageBuffer) {
-        console.log("Consumer client close", regData.uid);
-        // console.log(messageBuffer);
-        let remainingBuffer = null;
-        for(let i=0; i<this.consumers.length; i++) {
-            if(this.consumers[i].uid == regData.uid) {
-                // console.log(`Consumer client close:`, regData.uid); 
-                remainingBuffer = JSON.parse(JSON.stringify(this.consumers[i].messageQueue));
+    _consumerClientOnClose(regData) {
+        if(!this.clientUidStates[regData.uid] || this.clientUidStates[regData.uid] != "closed") {
+            this.clientUidStates[regData.uid] = "closed";
+            console.log("Consumer client close", regData.uid);
+            // console.log(messageBuffer);
+            let remainingBuffer = null;
+        
+            for(let i=0; i<this.consumers.length; i++) {
+                if(this.consumers[i].uid == regData.uid) {
+                    // console.log(`Consumer client close:`, regData.uid); 
+                    remainingBuffer = JSON.parse(JSON.stringify(this.consumers[i].messageQueue));
 
-                this.consumers[i].cleanup();
-                if(regData.client){
-                    regData.client.removeListener('ready', this._consumerClientOnReady);
-                    regData.client.removeListener('close', this._consumerClientOnClose);
-                    regData.client.removeListener('error', this._consumerClientOnClose);
+                    this.consumers[i].cleanup();
+                    if(regData.client){
+                        regData.client.removeListener('ready', this._consumerClientOnReady);
+                        regData.client.removeListener('close', this._consumerClientOnClose);
+                        regData.client.removeListener('error', this._consumerClientOnClose);
+                        console.log("Closed consumer client connection");
+                    }
+                    i = this.consumers.length;
                 }
-                i = this.consumers.length;
             }
+            if(regData.client) {
+                regData.client.close();
+                regData.client = null;
+            }
+            this._removeConsumer(regData);
+            setTimeout(function (_regData, _remainingBuffer) {
+                delete this.clientUidStates[_regData.uid];
+                this.registerConsumer(_regData.groupId, _regData.topics, _regData.processMessageCb, _remainingBuffer);
+            }.bind(this, regData, remainingBuffer ? remainingBuffer : regData.remainingBuffer), 4000);
         }
-        regData.client.close();
-        this._removeConsumer(regData);
-        setTimeout(function (_regData, _remainingBuffer) {
-            // console.log("Attempting reconnect...");
-            this.registerConsumer(_regData.groupId, _regData.topics, _regData.processMessageCb, _remainingBuffer);
-        }.bind(this, regData, remainingBuffer ? remainingBuffer : regData.remainingBuffer), 4000);
     }
 
     /**
@@ -194,11 +203,11 @@ class KafkaController {
     _initProducer(remainingBuffer) {
         try {
             this.producerClient = this._createClient();
-            // let uid = shortid.generate();
+            let uid = shortid.generate();
 
             this.producerClient.once('ready', this._producerClientOnReady.bind(this, remainingBuffer));
-            this.producerClient.on('close', this._producerClientOnClose.bind(this, remainingBuffer));
-            this.producerClient.on('error', this._producerClientOnClose.bind(this, remainingBuffer));
+            this.producerClient.on('close', this._producerClientOnClose.bind(this, remainingBuffer, uid));
+            this.producerClient.on('error', this._producerClientOnClose.bind(this, remainingBuffer, uid));
         } catch (error) {
             setTimeout(function (_remainingBuffer) {
                 this._initProducer(_remainingBuffer);
@@ -210,7 +219,6 @@ class KafkaController {
      * _producerClientOnReady
      */
     _producerClientOnReady(remainingBuffer) {
-        // console.log("Producer client ready");
         this.producer = new KafkaProducerWrapper(this.producerClient);
         this.producer.initProducer(
             () => {
@@ -222,25 +230,30 @@ class KafkaController {
         );
     }
 
+
     /**
      * _producerClientOnClose
      */
-    _producerClientOnClose(remainingBuffer) {
-        // console.log("Producer client close");
-        this.producerReady = false;
-        if(this.producer)
-            this.producer.cleanup();
-        this.producer = null;
-        if(this.producerClient){
-            this.producerClient.removeListener('ready', this._producerClientOnReady);
-            this.producerClient.removeListener('close', this._producerClientOnClose);
-            this.producerClient.removeListener('error', this._producerClientOnClose);
-            remainingBuffer = this.producer ? JSON.parse(JSON.stringify(this.producer.messageQueue)) : null;
-            this.producerClient.close();
+    _producerClientOnClose(remainingBuffer, uid) {
+        if(!this.clientUidStates[uid] || this.clientUidStates[uid] != "closed") {
+            this.clientUidStates[uid] = "closed";
+            // console.log("Producer client close");
+            this.producerReady = false;
+            if(this.producer)
+                this.producer.cleanup();
+            this.producer = null;
+            if(this.producerClient){
+                this.producerClient.removeListener('ready', this._producerClientOnReady);
+                this.producerClient.removeListener('close', this._producerClientOnClose);
+                this.producerClient.removeListener('error', this._producerClientOnClose);
+                remainingBuffer = this.producer ? JSON.parse(JSON.stringify(this.producer.messageQueue)) : null;
+                this.producerClient.close();
+            }
+            setTimeout(function (_remainingBuffer, _uid) {
+                delete this.clientUidStates[_uid];
+                this._initProducer(_remainingBuffer);
+            }.bind(this, remainingBuffer, uid), 4000);
         }
-        setTimeout(function (_remainingBuffer) {
-            this._initProducer(_remainingBuffer);
-        }.bind(this, remainingBuffer), 4000);
     }
 
     /**
@@ -311,10 +324,11 @@ class KafkaController {
     _initSearchConsumer() {
         try {
             this.searchClient = this._createClient();
+            let uid = shortid.generate();
 
             this.searchClient.once('ready', this._searchClientOnReady.bind(this));
-            this.searchClient.on('close', this._searchClientOnClose.bind(this));
-            this.searchClient.on('error', this._searchClientOnClose.bind(this));
+            this.searchClient.on('close', this._searchClientOnClose.bind(this, uid));
+            this.searchClient.on('error', this._searchClientOnClose.bind(this, uid));
         } catch (error) {
             setTimeout(function () {
                 this._initSearchConsumer();
@@ -338,23 +352,27 @@ class KafkaController {
     /**
      * _searchClientOnClose
      */
-    _searchClientOnClose() {
-        this.searchClientReady = false;
-        // console.log("Search consumer client close");
+    _searchClientOnClose(uid) {
+        if(!this.clientUidStates[uid] || this.clientUidStates[uid] != "closed") {
+            this.clientUidStates[uid] = "closed";
+            this.searchClientReady = false;
+            // console.log("Search consumer client close");
 
-        if(this.searchConsumer)
-            this.searchConsumer.cleanup();
-        this.searchConsumer = null;
+            if(this.searchConsumer)
+                this.searchConsumer.cleanup();
+            this.searchConsumer = null;
 
-        if(this.searchClient){
-            this.searchClient.removeListener('ready', this._searchClientOnReady);
-            this.searchClient.removeListener('close', this._searchClientOnClose);
-            this.searchClient.removeListener('error', this._searchClientOnClose);
-            this.searchClient.close();
+            if(this.searchClient){
+                this.searchClient.removeListener('ready', this._searchClientOnReady);
+                this.searchClient.removeListener('close', this._searchClientOnClose);
+                this.searchClient.removeListener('error', this._searchClientOnClose);
+                this.searchClient.close();
+            }
+            setTimeout(function (_uid) {
+                delete this.clientUidStates[_uid];
+                this._initSearchConsumer();
+            }.bind(this, uid), 4000);
         }
-        setTimeout(function () {
-            this._initSearchConsumer();
-        }.bind(this), 4000);
     }
 
     /**

@@ -62,7 +62,7 @@ class ConsumeWrapper {
         if(this.consumer) {
             this.consumer.close(false, (err) => {
                 this.cleanup();
-                this.onConsumerClosed(err, JSON.parse(JSON.stringify(this.messageQueue)));
+                this.onConsumerClosed(err);
             });
         } else {
             this.onError(err);

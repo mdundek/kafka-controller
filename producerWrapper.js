@@ -18,7 +18,7 @@ class ProducerWrapper {
         this.producerErrorCb = onError;
         this.messageQueue = remainingBuffer ? remainingBuffer : [];
         this.producer = new kafka.Producer(this.client);
-        this.producer.once('ready', this.producerReadyCb);
+        this.producerReadyCb();
         this.producer.on('error', this.producerErrorCb)
     }
 
