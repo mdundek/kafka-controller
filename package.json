@@ -1,6 +1,6 @@
 {
   "name": "kafka-controller",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Kafka wrapper arount the kafka-node module, dummy proof adding reconnect management and consumer strict order processing",
   "main": "index.js",
   "scripts": {
