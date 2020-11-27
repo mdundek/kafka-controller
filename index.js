@@ -143,9 +143,28 @@ class KafkaController {
     }
 
     /**
+     * unregisterConsumer
+     * @param {*} uid 
+     * @param {*} groupId 
+     * @param {*} topic 
+     * @param {*} partition 
+     */
+    unregisterConsumer(groupId, topic, partition) {
+        this.consumers.forEach(consumer => {
+            if(consumer.groupId == groupId && consumer.topicArray.find(t => t.topic == topic && t.partition == partition)){
+                console.log("Found consumer to close =>", consumer.uid);
+                this._consumerClientOnClose({
+                    uid: consumer.uid,
+                    client: consumer.client
+                }, true);
+            }
+        });
+    }
+
+    /**
      * _consumerClientOnClose
      */
-    _consumerClientOnClose(regData) {
+    _consumerClientOnClose(regData, skipRestart) {
         if(!this.clientUidStates[regData.uid] || this.clientUidStates[regData.uid] != "closed") {
             this.clientUidStates[regData.uid] = "closed";
             console.log("Consumer client close", regData.uid);
@@ -172,10 +191,12 @@ class KafkaController {
                 regData.client = null;
             }
             this._removeConsumer(regData);
-            setTimeout(function (_regData, _remainingBuffer) {
-                delete this.clientUidStates[_regData.uid];
-                this.registerConsumer(_regData.groupId, _regData.topics, _regData.processMessageCb, _remainingBuffer);
-            }.bind(this, regData, remainingBuffer ? remainingBuffer : regData.remainingBuffer), 4000);
+            if(!skipRestart) {
+                setTimeout(function (_regData, _remainingBuffer) {
+                    delete this.clientUidStates[_regData.uid];
+                    this.registerConsumer(_regData.groupId, _regData.topics, _regData.processMessageCb, _remainingBuffer);
+                }.bind(this, regData, remainingBuffer ? remainingBuffer : regData.remainingBuffer), 4000);
+            }
         }
     }
 
