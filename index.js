@@ -156,7 +156,7 @@ class KafkaController {
                 this._consumerClientOnClose({
                     uid: consumer.uid,
                     client: consumer.client
-                }, true);
+                }, null, true);
             }
         });
     }
@@ -164,7 +164,7 @@ class KafkaController {
     /**
      * _consumerClientOnClose
      */
-    _consumerClientOnClose(regData, skipRestart) {
+    _consumerClientOnClose(regData, obj, skipRestart) {
         if(!this.clientUidStates[regData.uid] || this.clientUidStates[regData.uid] != "closed") {
             this.clientUidStates[regData.uid] = "closed";
             console.log("Consumer client close", regData.uid);
@@ -191,6 +191,7 @@ class KafkaController {
                 regData.client = null;
             }
             this._removeConsumer(regData);
+
             if(!skipRestart) {
                 setTimeout(function (_regData, _remainingBuffer) {
                     delete this.clientUidStates[_regData.uid];

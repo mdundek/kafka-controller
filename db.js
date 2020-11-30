@@ -20,6 +20,10 @@ class DBController {
             (async() => {
                 let client = await this.pool.connect();
                 try {
+                    let result = await client.query("SELECT 1 FROM pg_database WHERE datname='kafka-offsets'");
+                    if(result.rows.length == 0)
+                        await client.query('CREATE DATABASE "kafka-offsets"');
+
                     const res = await client.query(`SELECT EXISTS (
                         SELECT FROM information_schema.tables 
                         WHERE  table_schema = 'public'
