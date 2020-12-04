@@ -30,7 +30,9 @@ class DBController {
                         AND    table_name   = 'topic_offset'
                         );`, []);
                     if(!res.rows[0].exists) {
-                        await client.query(`CREATE SEQUENCE topic_offset_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 START 17 CACHE 1`, []);
+                        try {
+                            await client.query(`CREATE SEQUENCE topic_offset_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 START 17 CACHE 1`, []);
+                        } catch (_e) {}
                         await client.query(`CREATE TABLE "public"."topic_offset" (
                             "id" integer DEFAULT nextval('topic_offset_id_seq') NOT NULL,
                             "topic" character varying(255) NOT NULL,
